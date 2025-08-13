@@ -1,3 +1,4 @@
+
 # 🍽️ Caldish - AI-Powered Food Nutrition Analysis
 
 A modern web application that uses artificial intelligence to analyze food photos and provide detailed nutritional information including calories, macronutrients, vitamins, and minerals.
@@ -271,3 +272,4 @@ Nutrition analysis is AI-generated and provided for informational purposes only.
 **Made with ❤️ by Raymond**
 
 For support or questions, please open an issue or contact [your-email@example.com](mailto:your-email@example.com)
+
