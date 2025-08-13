@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caldish - Food Nutrition Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .drag-active {
+            @apply border-blue-500 bg-blue-50;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .spinner {
+            border: 3px solid #f3f3f4;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-4xl mx-auto px-4 py-6">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold">🍽️</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">Caldish</h1>
+                <span class="text-sm text-gray-500">Food Nutrition Analysis</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Upload Section -->
+        <div id="upload-section" class="mb-8">
+            <div class="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-8 text-center hover:border-gray-400 transition-colors cursor-pointer" id="dropzone">
+                <div class="space-y-4">
+                    <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Upload a food photo</h3>
+                        <p class="text-gray-600 mb-4">Drag and drop your image here, or click to browse</p>
+                        <button class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Choose File
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500">Supports: JPG, PNG, WebP (max 10MB)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Preview Section -->
+        <div id="preview-section" class="mb-8 hidden">
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Preview</h3>
+                    <button id="remove-image" class="text-red-600 hover:text-red-700 text-sm">Remove</button>
+                </div>
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="md:w-1/2">
+                        <img id="preview-image" class="w-full h-64 object-cover rounded-lg border" alt="Food preview">
+                    </div>
+                    <div class="md:w-1/2 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Analysis Options</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" checked class="mr-2 text-blue-600">
+                                    <span class="text-sm">Include vitamins & minerals</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" checked class="mr-2 text-blue-600">
+                                    <span class="text-sm">Estimate portion size</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2 text-blue-600">
+                                    <span class="text-sm">Detailed ingredient breakdown</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button id="analyze-btn" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                            Analyze Nutrition
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div id="loading-section" class="mb-8 hidden">
+            <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+                <div class="spinner mx-auto mb-4"></div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Analyzing your food...</h3>
+                <p class="text-gray-600">Our AI is identifying ingredients and calculating nutrition facts</p>
+                <div class="mt-4">
+                    <div class="bg-gray-200 rounded-full h-2">
+                        <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden fade-in">
+            <!-- Food Identification -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Identified Foods</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                            <p class="font-medium">Grilled Chicken Breast</p>
+                            <p class="text-sm text-gray-600">~150g serving • 95% confidence</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                            <p class="font-medium">Steamed Broccoli</p>
+                            <p class="text-sm text-gray-600">~100g serving • 92% confidence</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <div>
+                            <p class="font-medium">Brown Rice</p>
+                            <p class="text-sm text-gray-600">~75g serving • 78% confidence</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                            <p class="font-medium">Olive Oil</p>
+                            <p class="text-sm text-gray-600">~1 tbsp • 85% confidence</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nutrition Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Nutrition Overview -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Nutrition Overview</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                            <span class="font-medium text-blue-900">Total Calories</span>
+                            <span class="text-2xl font-bold text-blue-900">385</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <div class="text-lg font-bold text-gray-900">32g</div>
+                                <div class="text-sm text-gray-600">Protein</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <div class="text-lg font-bold text-gray-900">28g</div>
+                                <div class="text-sm text-gray-600">Carbs</div>
+                            </div>
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <div class="text-lg font-bold text-gray-900">14g</div>
+                                <div class="text-sm text-gray-600">Fat</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Macros Chart -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Macronutrient Distribution</h3>
+                    <div class="relative">
+                        <canvas id="macros-chart" width="300" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Nutrition -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Detailed Nutrition Facts</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Macronutrients -->
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-3">Macronutrients</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Protein</span>
+                                <span class="font-medium">32.1g</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Carbohydrates</span>
+                                <span class="font-medium">28.5g</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Dietary Fiber</span>
+                                <span class="font-medium">5.2g</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Total Fat</span>
+                                <span class="font-medium">14.3g</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Saturated Fat</span>
+                                <span class="font-medium">3.1g</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Sodium</span>
+                                <span class="font-medium">245mg</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vitamins -->
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-3">Vitamins</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Vitamin A</span>
+                                <span class="font-medium">45% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Vitamin C</span>
+                                <span class="font-medium">90% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Vitamin K</span>
+                                <span class="font-medium">120% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Folate</span>
+                                <span class="font-medium">15% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Niacin</span>
+                                <span class="font-medium">65% DV</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Minerals -->
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-3">Minerals</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Iron</span>
+                                <span class="font-medium">12% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Calcium</span>
+                                <span class="font-medium">8% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Potassium</span>
+                                <span class="font-medium">25% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Magnesium</span>
+                                <span class="font-medium">18% DV</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Phosphorus</span>
+                                <span class="font-medium">30% DV</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button class="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        Save to History
+                    </button>
+                    <button class="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                        Export as PDF
+                    </button>
+                    <button class="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors font-medium">
+                        Share Results
+                    </button>
+                    <button id="analyze-another" class="flex-1 border-2 border-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                        Analyze Another
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-16">
+        <div class="max-w-4xl mx-auto px-4 py-8">
+            <div class="text-center text-gray-600 space-y-2">
+                <p class="text-sm">Nutrition analysis powered by AI • Results are estimates</p>
+                <p class="text-xs">Always consult with healthcare professionals for dietary advice</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const uploadSection = document.getElementById('upload-section');
+        const previewSection = document.getElementById('preview-section');
+        const loadingSection = document.getElementById('loading-section');
+        const resultsSection = document.getElementById('results-section');
+        const dropzone = document.getElementById('dropzone');
+        const previewImage = document.getElementById('preview-image');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const removeImageBtn = document.getElementById('remove-image');
+        const analyzeAnotherBtn = document.getElementById('analyze-another');
+        const progressBar = document.getElementById('progress-bar');
+
+        // State
+        let currentState = 'upload'; // upload, preview, loading, results
+
+        // Initialize Chart
+        let macrosChart;
+
+        function initChart() {
+            const ctx = document.getElementById('macros-chart').getContext('2d');
+            macrosChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Protein (32g)', 'Carbs (28g)', 'Fat (14g)'],
+                    datasets: [{
+                        data: [32, 28, 14],
+                        backgroundColor: [
+                            '#10B981', // green
+                            '#3B82F6', // blue
+                            '#F59E0B', // yellow
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // File Upload Simulation
+        dropzone.addEventListener('click', () => {
+            // Simulate file selection
+            simulateFileUpload();
+        });
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-active');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('drag-active');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-active');
+            simulateFileUpload();
+        });
+
+        function simulateFileUpload() {
+            // Use a sample food image (you can replace with actual file upload)
+            const sampleImageUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzY5NzU4MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkdyaWxsZWQgQ2hpY2tlbiBEaXNoPC90ZXh0Pgo8L3N2Zz4K';
+            
+            previewImage.src = sampleImageUrl;
+            showSection('preview');
+        }
+
+        // Analyze Button
+        analyzeBtn.addEventListener('click', () => {
+            showSection('loading');
+            simulateAnalysis();
+        });
+
+        function simulateAnalysis() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        showSection('results');
+                        initChart();
+                    }, 500);
+                }
+                progressBar.style.width = progress + '%';
+            }, 300);
+        }
+
+        // Remove Image
+        removeImageBtn.addEventListener('click', () => {
+            showSection('upload');
+            progressBar.style.width = '0%';
+        });
+
+        // Analyze Another
+        analyzeAnotherBtn.addEventListener('click', () => {
+            showSection('upload');
+            progressBar.style.width = '0%';
+            if (macrosChart) {
+                macrosChart.destroy();
+            }
+        });
+
+        // Show Section
+        function showSection(section) {
+            // Hide all sections
+            uploadSection.classList.add('hidden');
+            previewSection.classList.add('hidden');
+            loadingSection.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+
+            // Show target section
+            switch(section) {
+                case 'upload':
+                    uploadSection.classList.remove('hidden');
+                    break;
+                case 'preview':
+                    previewSection.classList.remove('hidden');
+                    break;
+                case 'loading':
+                    loadingSection.classList.remove('hidden');
+                    break;
+                case 'results':
+                    resultsSection.classList.remove('hidden');
+                    break;
+            }
+
+            currentState = section;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            showSection('upload');
+        });
+    </script>
+</body>
+</html>
